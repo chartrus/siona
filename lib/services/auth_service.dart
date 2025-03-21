@@ -68,9 +68,9 @@ class AuthService {
         userCredential = await _auth.signInWithCredential(credential);
       }
 
-      // 로그인 성공 시 사용자 정보 저장
+      // 로그인 성공 시 사용자 프로필 정보 저장
       if (userCredential?.user != null) {
-        await _userService.saveUserData(userCredential!.user!);
+        await _userService.saveUserProfile(userCredential!.user!);
       }
 
       return userCredential;
