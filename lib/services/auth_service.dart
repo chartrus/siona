@@ -1,13 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'user_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: kIsWeb ? "977901277909-kodhvg94r4rp0fbcj58lo5qgbpusnf60.apps.googleusercontent.com" : null,
-    scopes: ['email', 'profile'],
   );
+  final UserService _userService = UserService();
 
   // 현재 사용자 상태 스트림
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -18,6 +19,8 @@ class AuthService {
       print('=== Google 로그인 시작 ===');
       print('웹 환경: $kIsWeb');
       print('클라이언트 ID: ${_googleSignIn.clientId}');
+
+      UserCredential? userCredential;
 
       if (kIsWeb) {
         // 웹 환경에서는 Firebase Auth Provider를 직접 사용
@@ -34,13 +37,12 @@ class AuthService {
         
         // Firebase Auth로 직접 로그인
         try {
-          final UserCredential userCredential = await _auth.signInWithPopup(googleProvider);
+          userCredential = await _auth.signInWithPopup(googleProvider);
           print('팝업 로그인 성공: ${userCredential.user?.email}');
-          return userCredential;
         } catch (e) {
           print('팝업 로그인 실패, 리디렉션 시도: $e');
           await _auth.signInWithRedirect(googleProvider);
-          return await _auth.getRedirectResult();
+          userCredential = await _auth.getRedirectResult();
         }
       } else {
         // 모바일 환경에서는 GoogleSignIn 사용
@@ -55,7 +57,7 @@ class AuthService {
 
         // 인증 세부 정보 얻기
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        
+
         // Firebase credential 생성
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
@@ -63,8 +65,15 @@ class AuthService {
         );
 
         // Firebase 로그인
-        return await _auth.signInWithCredential(credential);
+        userCredential = await _auth.signInWithCredential(credential);
       }
+
+      // 로그인 성공 시 사용자 정보 저장
+      if (userCredential?.user != null) {
+        await _userService.saveUserData(userCredential!.user!);
+      }
+
+      return userCredential;
     } catch (e, stackTrace) {
       print('=== Google 로그인 실패 ===');
       print('에러: $e');
