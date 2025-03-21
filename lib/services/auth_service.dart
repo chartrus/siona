@@ -34,15 +34,12 @@ class AuthService {
         
         // Firebase Auth로 직접 로그인
         try {
-          // 팝업으로 로그인 시도
           final UserCredential userCredential = await _auth.signInWithPopup(googleProvider);
           print('팝업 로그인 성공: ${userCredential.user?.email}');
           return userCredential;
         } catch (e) {
           print('팝업 로그인 실패, 리디렉션 시도: $e');
-          // 팝업이 실패하면 리디렉션 시도
           await _auth.signInWithRedirect(googleProvider);
-          // 리디렉션 후 결과 가져오기
           return await _auth.getRedirectResult();
         }
       } else {
